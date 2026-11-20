@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe-ID | Control de Acceso en Obra</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        background-color: #f5f7fa; 
+        color: #1a202c; 
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    .header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+        color: white;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .logo { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+    .logo span { color: #4ade80; }
+    .status-badge { background: rgba(74, 222, 128, 0.2); color: #4ade80; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .header-info { font-size: 12px; opacity: 0.9; }
+    .header-info strong { color: #4ade80; }
+    
+    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+    
+    .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
+    .section-title { font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .section-title::before { content: ''; width: 3px; height: 14px; background: #2d5a87; border-radius: 2px; }
+    
+    .worker { display: flex; align-items: center; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; background: #fafbfc; }
+    .worker:hover { background: #f1f5f9; }
+    .worker.selected { border-color: #2d5a87; background: #e8f0f8; box-shadow: 0 0 0 2px rgba(45, 90, 135, 0.1); }
+    .worker-avatar { width: 40px; height: 40px; border-radius: 50%; background: #cbd5e1; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #475569; margin-right: 12px; flex-shrink: 0; }
+    .worker-info { flex: 1; }
+    .worker-name { font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 2px; }
+    .worker-meta { font-size: 12px; color: #64748b; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-right: 6px; }
+    .badge-ok { background: #dcfce7; color: #166534; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    
+    .zones-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .zone { background: #fafbfc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 10px; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .zone:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .zone.selected { border-color: #2d5a87; background: #e8f0f8; }
+    .zone-risk { border-left: 3px solid #ef4444; }
+    .zone-name { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 2px; }
+    .zone-type { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; }
+    .zone-risk-tag { display: inline-block; background: #fee2e2; color: #991b1b; padding: 1px 6px; border-radius: 8px; font-size: 9px; font-weight: 700; margin-top: 4px; }
+    
+    .btn-primary { width: 100%; padding: 14px; background: #2d5a87; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-bottom: 10px; }
+    .btn-primary:hover { background: #1e3a5f; }
+    .btn-secondary { width: 100%; padding: 14px; background: #ef4444; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-bottom: 16px; }
+    .btn-secondary:hover { background: #dc2626; }
+    
+    .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #1e3a5f; }
+    .report-title { font-size: 14px; font-weight: 700; color: #1e3a5f; text-transform: uppercase; }
+    .report-date { font-size: 11px; color: #64748b; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 8px 6px; color: #1e3a5f; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #1e3a5f; }
+    td { padding: 10px 6px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+    tr:last-child td { border-bottom: none; }
+    
+    .alert-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .alert-overlay.active { display: flex; }
+    .alert-box { background: white; border-radius: 8px; padding: 24px; max-width: 360px; width: 100%; border-left: 4px solid #ef4444; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .alert-icon { width: 48px; height: 48px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 12px; }
+    .alert-title { font-size: 16px; font-weight: 700; color: #991b1b; margin-bottom: 6px; }
+    .alert-message { font-size: 13px; color: #475569; margin-bottom: 16px; line-height: 1.5; }
+    .alert-btn { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+    
+    .instruction { background: #e8f0f8; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #1e3a5f; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    
+    /* LICENCIA */
+    .license-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+    .license-overlay.active { display: flex; }
+    .license-box { background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 100%; border-left: 4px solid #2d5a87; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+    .license-title { font-size: 16px; font-weight: 700; color: #1e3a5f; margin-bottom: 12px; }
+    .license-input { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; word-break: break-all; margin-bottom: 12px; }
+    .license-btn { background: #2d5a87; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+    .license-error { color: #ef4444; font-size: 12px; margin-top: 8px; display: none; }
+    
+    /* PANTALLA DE LICENCIA VENCIDA */
+    .expired-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center; padding: 20px; }
+    .expired-overlay.active { display: flex; }
+    .expired-box { background: white; border-radius: 8px; padding: 30px; max-width: 400px; width: 100%; text-align: center; border-left: 4px solid #ef4444; }
+    .expired-title { font-size: 18px; font-weight: 700; color: #991b1b; margin-bottom: 12px; }
+    .expired-message { font-size: 14px; color: #475569; margin-bottom: 20px; line-height: 1.5; }
+    .expired-link { display: block; padding: 12px; border-radius: 6px; font-weight: 600; text-decoration: none; margin-bottom: 8px; color: white; background: #16a34a; }
+    .expired-link.alt { background: #2d5a87; }
+    .expired-link.ghost { background: transparent; color: #2d5a87; border: 1px solid #2d5a87; cursor: pointer; font-size: 14px; width: 100%; }
+    
+    .lic-bar { display: none; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; align-items: center; justify-content: space-between; gap: 8px; }
+    .lic-bar.on { display: flex; }
+    .lic-bar button { background: #92400e; color: white; border: 0; border-radius: 6px; padding: 6px 12px; font-weight: 600; cursor: pointer; }
+
+    @media print {
+        body { background: white; }
+        .no-print { display: none !important; }
+        .container { max-width: 100%; padding: 0; }
+        .section { box-shadow: none; border: none; padding: 0; }
+        #reportCard { display: block !important; }
+        .report-header { border-bottom: 3px solid #1e3a5f; padding-bottom: 15px; margin-bottom: 20px; }
+        .report-title { font-size: 18px; color: #1e3a5f; }
+        table { font-size: 11px; }
+        th { background: #1e3a5f; color: white; padding: 10px 6px; }
+        td { padding: 12px 6px; }
+        .badge { padding: 4px 10px; font-size: 11px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="header no-print">
+    <div class="header-top">
+        <div class="logo">Safe<span>-ID</span></div>
+        <div class="status-badge">● EN LÍNEA</div>
+    </div>
+    <div class="header-info">
+        Obra: <strong id="obraName">Edificio Corporativo Las Condes</strong> · Supervisor: <span id="supervisorName">J. Urra</span>
+    </div>
+    <div class="header-info" id="licInfo" style="margin-top:4px;opacity:.75"></div>
+</div>
+
+<div class="container">
+
+    <div class="lic-bar no-print" id="licBar"><span id="licBarTxt"></span><button onclick="openActivation()" id="licBarBtn">Renovar</button></div>
+
+    <div class="instruction no-print">
+        <span>ℹ️</span>
+        <span>Seleccione un trabajador y luego una zona para registrar su ubicación.</span>
+    </div>
+
+    <div class="section no-print">
+        <div class="section-title">Personal en Obra</div>
+        <div class="worker" id="w1" onclick="selectWorker('w1', 'Juan Pérez', 'VIGENTE', 'NORMAL')">
+            <div class="worker-avatar">JP</div>
+            <div class="worker-info">
+                <div class="worker-name">Juan Pérez</div>
+                <div class="worker-meta"><span class="badge badge-ok">Examen Vigente</span><span class="badge badge-ok">Fatiga Normal</span></div>
+            </div>
+        </div>
+        <div class="worker" id="w2" onclick="selectWorker('w2', 'Pedro Gómez', 'VENCIDO', 'ALTA')">
+            <div class="worker-avatar">PG</div>
+            <div class="worker-info">
+                <div class="worker-name">Pedro Gómez</div>
+                <div class="worker-meta"><span class="badge badge-danger">Examen Vencido</span><span class="badge badge-danger">Fatiga Alta</span></div>
+            </div>
+        </div>
+        <div class="worker" id="w3" onclick="selectWorker('w3', 'María López', 'VIGENTE', 'NORMAL')">
+            <div class="worker-avatar">ML</div>
+            <div class="worker-info">
+                <div class="worker-name">María López</div>
+                <div class="worker-meta"><span class="badge badge-ok">Examen Vigente</span><span class="badge badge-ok">Fatiga Normal</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section no-print">
+        <div class="section-title">Zonas de la Obra</div>
+        <div class="zones-grid">
+            <div class="zone" onclick="assignZone('Piso 1', false)">
+                <div class="zone-name">Piso 1</div><div class="zone-type">Zona 1 · Riesgo Bajo</div>
+            </div>
+            <div class="zone zone-risk" onclick="assignZone('Piso 20 (Altura)', true)">
+                <div class="zone-name">Piso 20</div><div class="zone-type">Zona 2 · Trabajo en Altura</div><div class="zone-risk-tag">⚠ REQUIERE EXAMEN</div>
+            </div>
+            <div class="zone" onclick="assignZone('Jaula de Residuos', false)">
+                <div class="zone-name">Jaula Residuos</div><div class="zone-type">Zona 3 · Riesgo Medio</div>
+            </div>
+            <div class="zone" onclick="assignZone('Estación de Emergencia', false)">
+                <div class="zone-name">Emergencia</div><div class="zone-type">Zona 4 · Punto Seguro</div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-primary no-print" onclick="generateReport()">📊 Generar Reporte en Pantalla</button>
+    <button class="btn-secondary no-print" onclick="downloadPDF()">📄 Guardar como PDF</button>
+
+    <div class="section" id="reportCard" style="display:none;">
+        <div class="report-header">
+            <div>
+                <div class="report-title">📊 REPORTE DE CONTROL DE ACCESO</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Safe-ID · <span id="reportObra">Edificio Corporativo Las Condes</span></div>
+            </div>
+            <div class="report-date" id="reportDate"></div>
+        </div>
+        <table>
+            <thead><tr><th>Trabajador</th><th>Ubicación</th><th>Examen</th><th>Fatiga</th></tr></thead>
+            <tbody id="reportBody"></tbody>
+        </table>
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; text-align: center;">
+            Documento generado automáticamente por Safe-ID.<br>
+            Validez legal según DS 40 y Ley 16.744.<br>
+            Supervisor: <span id="reportSupervisor">J. Urra</span> · Obra: <span id="reportObra2">Edificio Corporativo Las Condes</span>
+        </div>
+    </div>
+
+</div>
+
+<div class="alert-overlay no-print" id="alertOverlay">
+    <div class="alert-box">
+        <div class="alert-icon">🚫</div>
+        <div class="alert-title">🚨 ACCESO DENEGADO</div>
+        <div class="alert-message">
+            <strong id="alertWorkerName"></strong> no puede ingresar a <strong id="alertZoneName"></strong>.<br><br>
+            <strong>Motivo:</strong> Examen médico vencido y/o fatiga alta.<br>
+            <strong>Acción:</strong> Reubicar en zona segura (Piso 1, Jaula o Emergencia). La regularización del examen es responsabilidad del empleador según Ley 16.744.
+        </div>
+        <button class="alert-btn" onclick="closeAlert()">Entendido, Registrar Incidencia</button>
+    </div>
+</div>
+
+<!-- PANTALLA DE LICENCIA -->
+<div class="license-overlay" id="licenseOverlay">
+    <div class="license-box">
+        <div class="license-title">🔐 Activar Safe-ID</div>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Ingrese el código de licencia proporcionado por Miguel Ángel Cabezas Figueroa.</p>
+        <textarea class="license-input" id="licenseInput" rows="5" placeholder="Pegue aquí el código de licencia completo"></textarea>
+        <button class="license-btn" onclick="validateLicense()">Activar</button>
+        <div class="license-error" id="licenseError">Código inválido o vencido. Contacte al proveedor.</div>
+        <div style="margin-top:12px;font-size:12px;color:#64748b;">¿No tiene código? <a id="licWa" target="_blank" rel="noopener">WhatsApp</a> · <a id="licMail">Correo</a></div>
+        <button class="expired-link ghost" id="licClose" onclick="closeLicense()" style="display:none;margin:12px 0 0;">Cerrar</button>
+    </div>
+</div>
+
+<!-- PANTALLA DE LICENCIA VENCIDA -->
+<div class="expired-overlay" id="expiredOverlay">
+    <div class="expired-box">
+        <div class="expired-title">⚠️ Licencia Vencida</div>
+        <div class="expired-message">
+            <span id="expiredDetail">Su licencia de Safe-ID ha expirado.</span><br><br>
+            Para renovar, contacte a:<br>
+            <strong>Miguel Ángel Cabezas Figueroa</strong><br>
+            Asesor de Prevención de Riesgos Laborales
+        </div>
+        <a class="expired-link" id="expWa" target="_blank" rel="noopener">Escribir por WhatsApp</a>
+        <a class="expired-link alt" id="expMail">Escribir por correo</a>
+        <button class="expired-link ghost" onclick="openActivation()">Tengo un código nuevo</button>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // CLAVE PÚBLICA (la del generador amarillo; solo verifica, no firma)
+    // ============================================
+    const LIC_PUB = {"kty":"EC","x":"reIygAle_2oxL5fATpSSTBYjUBqWfvE5IJu92AXDBNU","y":"FY9KOfWCSQX6YHbCdvmwdrC2n4Yc1Pr55y3LRqJROHY","crv":"P-256"};
+    const SOPORTE = { nombre: 'Miguel Ángel Cabezas Figueroa', whatsapp: '56957577510', correo: 'michaelroocker.macf31@gmail.com' };
+    const PRODUCTO = 'safeid';
+    const PN = { semaforo: 'Semáforo Humano', safeid: 'Safe-ID', voz: 'Dictado por voz', terreno: 'Prevención en terreno' };
+    const PLANES = { chica: 'Obra chica', mediana: 'Obra mediana', grande: 'Obra grande' };
+
+    // ============================================
+    // DATOS DE LA OBRA (se llenan desde la licencia)
+    // ============================================
+    let obraData = {
+        nombre: 'Edificio Corporativo Las Condes',
+        supervisor: 'J. Urra',
+        maxTrabajadores: 30,
+        plan: 'demo',
+        vencimiento: null
+    };
+
+    // ============================================
+    // MÓDULO DE LICENCIAS (firma digital EC P-256)
+    // Prueba de 7 días -> licencia con inicio y término de contrato
+    // ============================================
+    const TRIAL_DAYS = 7;
+    let APP_OK = false;
+    function b64u2bytes(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const b = atob(t), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+    function lget(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lset(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    function ldel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+    function cget(k) { try { const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; } catch (e) { return null; } }
+    function cset(k, v) { try { document.cookie = k + '=' + encodeURIComponent(v) + '; max-age=315360000; path=/; SameSite=Lax'; } catch (e) {} }
+    const fmtLic = iso => new Date(iso + 'T12:00:00').toLocaleDateString('es-CL');
+    const licExpiry = p => p && p.e ? new Date(p.e + 'T23:59:59').getTime() : 0;
+    const licStart = p => p && p.f ? new Date(p.f + 'T00:00:00').getTime() : 0;
+    const el = id => document.getElementById(id);
+
+    async function verifyLicense(code) {
+        try {
+            const parts = String(code).replace(/\s+/g, '').split('.');
+            if (parts.length !== 2) return null;
+            const payload = b64u2bytes(parts[0]), sig = b64u2bytes(parts[1]);
+            const key = await crypto.subtle.importKey('jwk', LIC_PUB, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+            if (!await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, sig, payload)) return null;
+            const p = JSON.parse(new TextDecoder().decode(payload));
+            return p && p.o ? p : null;
+        } catch (e) { return null; }
+    }
+
+    function setBar(txt, btn) {
+        const b = el('licBar');
+        if (!txt) { b.classList.remove('on'); return; }
+        el('licBarTxt').innerText = txt; el('licBarBtn').innerText = btn; b.classList.add('on');
+    }
+    function showLicenseScreen(msg) {
+        el('expiredOverlay').classList.remove('active');
+        const err = el('licenseError');
+        err.innerText = msg || ''; err.style.display = msg ? 'block' : 'none';
+        el('licClose').style.display = APP_OK ? 'block' : 'none';
+        el('licenseOverlay').classList.add('active');
+    }
+    function closeLicense() { el('licenseOverlay').classList.remove('active'); }
+    function openActivation() { showLicenseScreen(''); }
+
+    function showExpired(p) {
+        el('expiredDetail').innerText = 'La licencia de «' + p.o + '» terminó el ' + fmtLic(p.e) + '.';
+        el('licenseOverlay').classList.remove('active');
+        el('expiredOverlay').classList.add('active');
+    }
+
+    function applyLicense(p) {
+        APP_OK = true;
+        obraData.nombre = p.o;
+        obraData.supervisor = p.s || '—';
+        obraData.maxTrabajadores = p.m || 0;
+        obraData.plan = p.p || '';
+        obraData.vencimiento = p.e || null;
+        el('obraName').innerText = obraData.nombre;
+        el('supervisorName').innerText = obraData.supervisor;
+        el('reportObra').innerText = el('reportObra2').innerText = obraData.nombre;
+        el('reportSupervisor').innerText = obraData.supervisor;
+        el('licInfo').innerText = (PLANES[obraData.plan] || 'Plan ' + obraData.plan) +
+            ' · ' + (obraData.maxTrabajadores ? 'hasta ' + obraData.maxTrabajadores + ' trabajadores' : 'sin límite de trabajadores') +
+            ' · ' + (obraData.vencimiento ? 'contrato hasta el ' + fmtLic(obraData.vencimiento) : 'sin fecha de término');
+        const a = document.createElement('a');
+        a.href = '#'; a.textContent = 'Cambiar código'; a.style.color = '#4ade80';
+        a.onclick = e => { e.preventDefault(); openActivation(); };
+        el('licInfo').append(' · ', a);
+        const dias = p.e ? Math.ceil((licExpiry(p) - Date.now()) / 86400000) : 999;
+        if (dias <= 15) setBar('Su licencia termina en ' + dias + ' día' + (dias === 1 ? '' : 's') + ' (' + fmtLic(p.e) + '). Para extenderla, avise a ' + SOPORTE.nombre + '.', 'Renovar');
+        else setBar('');
+        el('licenseOverlay').classList.remove('active');
+        el('expiredOverlay').classList.remove('active');
+    }
+
+    // Evalúa una licencia ya verificada. Devuelve true si queda activa.
+    function evaluateLicense(p) {
+        if (p.f && Date.now() < licStart(p)) { showLicenseScreen('Esta licencia comienza el ' + fmtLic(p.f) + '. Antes de esa fecha no se puede activar.'); return false; }
+        if (p.e && Date.now() > licExpiry(p)) { showExpired(p); return false; }
+        if (p.p !== 'personal' && (!Array.isArray(p.pr) || p.pr.indexOf(PRODUCTO) === -1)) {
+            const inc = Array.isArray(p.pr) && p.pr.length ? p.pr.map(x => PN[x] || x).join(', ') : 'otro producto';
+            showLicenseScreen('Esta licencia no incluye Safe-ID (incluye: ' + inc + '). Solicite una licencia para Safe-ID.');
+            return false;
+        }
+        applyLicense(p);
+        return true;
+    }
+
+    function setupSupport() {
+        const wa = 'https://wa.me/' + SOPORTE.whatsapp + '?text=' + encodeURIComponent('Hola, quiero una licencia de Safe-ID.');
+        const mail = 'mailto:' + SOPORTE.correo + '?subject=' + encodeURIComponent('Licencia Safe-ID');
+        el('licWa').href = wa; el('licMail').href = mail;
+        el('expWa').href = 'https://wa.me/' + SOPORTE.whatsapp + '?text=' + encodeURIComponent('Hola, quiero renovar la licencia de Safe-ID.');
+        el('expMail').href = 'mailto:' + SOPORTE.correo + '?subject=' + encodeURIComponent('Renovación licencia Safe-ID');
+    }
+
+    async function checkLicense() {
+        setupSupport();
+        const now = Date.now();
+        const last = Math.max(+lget('safeid-last') || 0, +cget('safeid_last') || 0);
+        if (last - now > 6 * 3600 * 1000) { showLicenseScreen('La fecha del teléfono parece atrasada. Corríjala y vuelva a abrir la aplicación.'); return; }
+        lset('safeid-last', String(Math.max(last, now))); cset('safeid_last', String(Math.max(last, now)));
+
+        const saved = lget('safeid-lic');
+        if (saved) {
+            if (!(window.crypto && crypto.subtle)) { showLicenseScreen('Este navegador no permite verificar la licencia. Abra la aplicación desde su enlace https.'); return; }
+            const p = await verifyLicense(saved);
+            if (!p) { ldel('safeid-lic'); showLicenseScreen('El código guardado no se pudo verificar. Ingrese un código válido.'); return; }
+            evaluateLicense(p);
+            return;
+        }
+
+        // Sin licencia: prueba gratuita de 7 días
+        let first = [+lget('safeid-t1') || 0, +cget('safeid_t1') || 0].filter(x => x > 0).reduce((m, x) => Math.min(m, x), Infinity);
+        if (!isFinite(first)) first = now;
+        lset('safeid-t1', String(first)); cset('safeid_t1', String(first));
+        const used = (now - first) / 86400000;
+        if (used > TRIAL_DAYS) { showLicenseScreen('Terminó la prueba gratuita de ' + TRIAL_DAYS + ' días. Para seguir usando Safe-ID necesita una licencia: contacte a ' + SOPORTE.nombre + '.'); return; }
+        const left = Math.max(1, Math.ceil(TRIAL_DAYS - used));
+        APP_OK = true;
+        el('licInfo').innerText = 'Prueba gratuita · quedan ' + left + ' día' + (left === 1 ? '' : 's');
+        setBar('Prueba gratuita: quedan ' + left + ' día' + (left === 1 ? '' : 's') + '.', 'Activar licencia');
+    }
+
+    async function validateLicense() {
+        const code = el('licenseInput').value.replace(/\s+/g, '');
+        const err = el('licenseError');
+        err.style.display = 'none';
+        if (!code) { err.innerText = 'Pegue el código de licencia.'; err.style.display = 'block'; return; }
+        if (!(window.crypto && crypto.subtle)) { err.innerText = 'Este navegador no permite verificar la licencia. Abra la aplicación desde su enlace https.'; err.style.display = 'block'; return; }
+        const p = await verifyLicense(code);
+        if (!p) { err.innerText = 'El código no es válido. Revise que esté completo y sin cortes.'; err.style.display = 'block'; return; }
+        if (evaluateLicense(p)) { lset('safeid-lic', code); el('licenseInput').value = ''; }
+    }
+
+    // ============================================
+    // LÓGICA DEL SAFE-ID
+    // ============================================
+    let selectedWorkerId = null;
+    let selectedWorkerData = {};
+    
+    const workersData = {
+        'Juan Pérez': { exam: 'VIGENTE', fatigue: 'NORMAL' },
+        'Pedro Gómez': { exam: 'VENCIDO', fatigue: 'ALTA' },
+        'María López': { exam: 'VIGENTE', fatigue: 'NORMAL' }
+    };
+    
+    let assignments = {
+        'Juan Pérez': 'Piso 20 (Altura)',
+        'Pedro Gómez': 'Piso 1',
+        'María López': 'Jaula de Residuos'
+    };
+
+    function playAlertSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(440, ctx.currentTime + 0.2);
+            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) { console.log('Audio no soportado'); }
+    }
+
+    function selectWorker(id, name, exam, fatigue) {
+        document.querySelectorAll('.worker').forEach(w => w.classList.remove('selected'));
+        document.getElementById(id).classList.add('selected');
+        selectedWorkerId = id;
+        selectedWorkerData = { name: name, exam: exam, fatigue: fatigue };
+    }
+
+    function assignZone(zoneName, isHeightZone) {
+        if (!selectedWorkerId) { alert('⚠ Primero seleccione un trabajador.'); return; }
+        
+        if (isHeightZone && selectedWorkerData.exam === 'VENCIDO') {
+            document.getElementById('alertWorkerName').innerText = selectedWorkerData.name;
+            document.getElementById('alertZoneName').innerText = zoneName;
+            document.getElementById('alertOverlay').classList.add('active');
+            playAlertSound();
+            return;
+        }
+
+        assignments[selectedWorkerData.name] = zoneName;
+        alert(`✓ ${selectedWorkerData.name} asignado a ${zoneName}`);
+        document.querySelectorAll('.worker').forEach(w => w.classList.remove('selected'));
+        selectedWorkerId = null;
+    }
+
+    function closeAlert() {
+        document.getElementById('alertOverlay').classList.remove('active');
+    }
+
+    function generateReport() {
+        const tbody = document.getElementById('reportBody');
+        tbody.innerHTML = '';
+        const now = new Date();
+        document.getElementById('reportDate').innerText = now.toLocaleString('es-CL');
+        document.getElementById('reportObra').innerText = obraData.nombre;
+        document.getElementById('reportObra2').innerText = obraData.nombre;
+        document.getElementById('reportSupervisor').innerText = obraData.supervisor;
+        
+        for (let name in assignments) {
+            const zone = assignments[name];
+            const exam = workersData[name].exam;
+            const fatigue = workersData[name].fatigue;
+            const examBadge = exam === 'VIGENTE' ? '<span class="badge badge-ok">Vigente</span>' : '<span class="badge badge-danger">Vencido</span>';
+            const fatBadge = fatigue === 'NORMAL' ? '<span class="badge badge-ok">Normal</span>' : '<span class="badge badge-danger">Alta</span>';
+            tbody.innerHTML += `<tr><td><strong>${name}</strong></td><td>${zone}</td><td>${examBadge}</td><td>${fatBadge}</td></tr>`;
+        }
+        document.getElementById('reportCard').style.display = 'block';
+    }
+
+    function downloadPDF() {
+        generateReport();
+        setTimeout(() => {
+            window.print();
+        }, 200);
+    }
+
+    // Inicializar
+    checkLicense();
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+        window.addEventListener('load', () => { try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {} });
+    }
+</script>
+</body>
+</html>
